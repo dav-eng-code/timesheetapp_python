@@ -166,7 +166,7 @@ class timeEntryDFs():
             for entry in self.entriesList:
                 data = pd.DataFrame({'Date': [entry.entryDate], 'Start': [entry.startTime], 'Project': [entry.project],
                                     'Time Items List': [entry.timeEntriesList], 'Details': [entry.details]})
-                self.rawEntriesDF=self.rawEntriesDF.append(data,sort=True,ignore_index=True)
+                self.rawEntriesDF=pd.concat([self.rawEntriesDF,data],sort=True,ignore_index=True)
             self.rawEntriesDF=self.rawEntriesDF.astype({'Date':str,'Details':str})
             for x in self.entriesList: assert str(x.entryDate)[0:4]!='1970'
         try: self.createRawEntriesDFsByDate()
@@ -183,7 +183,7 @@ class timeEntryDFs():
                     if entry.entryDate==date:
                         data = pd.DataFrame({'Date': [entry.entryDate], 'Start': [entry.startTime], 'Project': [entry.project],
                                             'Time Items List': [entry.timeEntriesList], 'Details': [entry.details]})
-                        df=df.append(data,sort=True,ignore_index=True)
+                        df=pd.concat([df,data],sort=True,ignore_index=True)
                         df=df.astype({'Date':str,'Details':str})
                 self.rawEntriesDfsDated[date]=df
         print(self.rawEntriesDfsDated)
@@ -199,7 +199,7 @@ class timeEntryDFs():
                         projID=find_project_from_name(entry.project).projID
                         data=pd.DataFrame({'Date': [entry.entryDate], 'Start': [entry.startTime], 'Duration': [item[3]],'ProjectID':[projID],
                                         'Project': [entry.project], 'Item Name': [item[0]], 'Item Product': [item[1]], 'Details': [entry.details]})
-                        self.entriesDF=self.entriesDF.append(data,sort=True,ignore_index=True)
+                        self.entriesDF=pd.concat([self.entriesDF,data],sort=True,ignore_index=True)
             try:
                 def sortEntriesDF(df):
                     df.sort_values(by=['Duration'],inplace=True)
