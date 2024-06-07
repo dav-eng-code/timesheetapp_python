@@ -65,15 +65,54 @@ class project():
                 productsList.append(item[1])
         return productsList
 
+projectsDF=pd.DataFrame()
+# sample projects list - this could be replaced later by a feature to add or import a projects list
+projectsDF = pd.DataFrame(
+    {'proj_code':['PROJ001','PROJ002','PROJ003','PROJ004','PROJ005'],
+     'proj_name':['Big Project','Little project','Waterfall project','Agile project','R&D project'],
+     'task_list':[
+         [('everyday task','ProdA'),('everyday task','ProdB'),('big task','ProdB')],
+         [('everyday task','ProdA'),('small task','ProdB'),('routine tasks','General')],
+         [('unexpected issue task','ProdA'),('special task','ProdB')],
+         [('stand-up task','ProdA'),('sitting down','ProdB'),('bug fixing','ProdA'),('code review','ProdC'),('technical debt avoidance','ProdA')],
+         [('where did the time go','ProdA'),('break-through celebration','ProdB')]
+     ]
+    }
+)
 
-projects_list = []
+
+""" 
 projects_list.append(project('PROJ001','The big EPC project',[('doing everyday stuff','ProdA'),('some special task','ProdA'),('doing everyday stuff','ProdB'),('some special task','ProdB')]))
 projects_list.append(project('PROJ002','The never ending project',[('doing everyday stuff','ProdA'),('some special task','ProdA'),('doing everyday stuff','ProdB'),('some special task','ProdB')]))
 projects_list.append(project('PROJ003','The simple project',[('task 1','ProdA'),('task 2','ProdA')]))
 projects_list.append(project('PROJ004','The everything project',[('generaltask1','ProdA'),('everydaything','ProdA'),('generaltask','ProdB'),('mostdaysthing','ProdB'),('task1','ProdC'),('manydaystask','ProdC'),('majortask','ProdD'),('slightly different task','ProdD')]))
 projects_list.append(project('PROJ005','DemoProj',[('Routine','ProdA'),('Reactve','ProdA'),('Remedial','ProdA'),('Routine','ProdB'),('Reactive','ProdB'),('Remedial','ProdB'),('Admin Task','NonProd')]))
+ """
+
+projectsFilename = 'projectsData.json'
+
+"""def saveProjectsData():
+    with open(projectsFilename,'w'):
+        projectsDF.to_json(projectsFilename)
+
+saveProjectsData()    #WILL ONLY NEED THIS AGAIN IF FEATURE CREATED TO AMEND PROJECTS FROM APP"""
+
+def readProjectsFromFile():
+    try:
+        with open(projectsFilename):
+            projectsDF=pd.read_json(projectsFilename)
+    except FileNotFoundError as e:
+        print('no such file for projects, results in:')
+        print(e)
+        return False
+readProjectsFromFile()
+projects_list = []
+[projects_list.append(project(row[0],row[1],row[2])) for row in zip(projectsDF['proj_code'],projectsDF['proj_name'],projectsDF['task_list'])]
 
 def get_projects(text=None):
+    
+    
+
     projects=[]
     if text==None:
         return projects_list
@@ -142,7 +181,7 @@ class timeEntryObject():
 
 class timeEntryDFs():
 
-    filename = 'timesheetData.json'
+    dataFilename = 'timesheetData.json'
 
     def __init__(self, entriesList: List[timeEntryObject] = None):
         self.entriesDF = pd.DataFrame()
@@ -237,18 +276,14 @@ class timeEntryDFs():
             for x in self.entriesList: assert str(x.entryDate)[0:4]!='1970'
 
     def saveRawEntriesData(self):
-        #filename = 'timesheetData.h5'
-        #self.filename = 'timesheetData.json'
-        #if not self.rawEntriesDF.empty:
-            with open(self.filename,'w'):
+            with open(self.dataFilename,'w'):
                 #self.rawEntriesDF.to_hdf(filename,key=self.rawEntriesDF)
-                self.rawEntriesDF.to_json(self.filename)
-            #for x in self.entriesList: assert str(x.entryDate)[0:4]!='1970'
+                self.rawEntriesDF.to_json(self.dataFilename)
 
     def readDataFromFile(self):
         try:
-            with open(self.filename):
-                self.rawEntriesDF=pd.read_json(self.filename)
+            with open(self.dataFilename):
+                self.rawEntriesDF=pd.read_json(self.dataFilename)
                 #print(self.rawEntriesDF.dtypes)
             if not self.rawEntriesDF.empty:
                 self.rawEntriesDF=self.rawEntriesDF.astype({'Date':str,'Details':str})
@@ -257,9 +292,10 @@ class timeEntryDFs():
                 return True
             else: return False
         except FileNotFoundError as e:
-            return False
-            print('no such file, results in')
+            print('no such file for data, results in:')
             print(e)
+            return False
+        
 
     def convertTo_listOfTimeEntryObjects(self):
         self.entriesList=[]

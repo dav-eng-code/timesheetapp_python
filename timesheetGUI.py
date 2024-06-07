@@ -57,45 +57,55 @@ currentDateLabel.grid(column=0, row=0,sticky='w')
 
 todayDate = StringVar()
 todayDate.set(str(datetime.date.today()))
-dateList = ['31/12/99','31/12/99','31/12/99','31/12/99']
-currentDateDropDown = OptionMenu(headerFr,todayDate,*dateList)
-currentDateDropDown.configure(bg=bgColour1,fg=fgColour1,activebackground=bgColour1,activeforeground='silver',highlightbackground=bgColour1,bd=1)
+
+# function to set global selected date for filtering tables by date
+selectedDate : str
+def setSelectedDate(e):
+    global selectedDate
+    selectedDate=e
+
+# date options list
+dateList = []
+for d in range(0,5):
+    dateList.append(str(datetime.date.today()-datetime.timedelta(days=d)))
+currentDateDropDown = OptionMenu(headerFr,todayDate,*dateList,command=setSelectedDate)
+currentDateDropDown.configure(bg=bgColour1,fg=fgColour1,activebackground=bgColour2s,activeforeground='silver',highlightbackground=bgColour1,bd=1)
 currentDateDropDown.grid(column=1, row=0,sticky='w')
-#listbox
+
 
 #___________________MAIN TABLE DISPLAY_______________________________
 
-sageSubmitButton=Button(headerFr,text='Upload to Sage',bg=bgColour2s,bd=0,highlightthickness=0)
+#sageSubmitButton=Button(headerFr,text='Upload to Sage',bg=bgColour2s,bd=0,highlightthickness=0)
 
 def displayRawEntries():
-    if rawViewButton['relief']=='sunken':
-        rawViewButton.configure(relief='raised',bd=0)
-        sageViewButton.configure(relief='sunken',bd=1)
+    if rawViewButton['relief']=='raised':
+        rawViewButton.configure(relief='sunken',bd=0)
+        sageViewButton.configure(relief='raised',bd=1)
         sortedEntriesTableFr.forget()
         entriesTableFr.pack(fill='x')
-        sageSubmitButton.grid_forget()
+        #sageSubmitButton.grid_forget()
 
 
 def displaySageEntries():
-    if sageViewButton['relief']=='sunken':
-        sageViewButton.configure(relief='raised',bd=0)
-        rawViewButton.configure(relief='sunken',bd=1)
+    if sageViewButton['relief']=='raised':
+        sageViewButton.configure(relief='sunken',bd=0)
+        rawViewButton.configure(relief='raised',bd=1)
         entriesTableFr.forget()
         sortedEntriesTableFr.pack(fill='x')
-        sageSubmitButton.grid(column=2,row=0,padx=200)
+        #sageSubmitButton.grid(column=2,row=0,padx=200)
 
-rawViewButton = Button(tabButtonsFr,text='Raw Entries View',command=displayRawEntries,bg=bgColour2,activebackground=bgColour2,highlightthickness=0)
+rawViewButton = Button(tabButtonsFr,text='Entries View',command=displayRawEntries,bg=bgColour2,activebackground=bgColour2,highlightthickness=0)
 rawViewButton.grid(column=0,row=0)
-sageViewButton=Button(tabButtonsFr,text='Sage View',relief='sunken', command=displaySageEntries,bg=bgColour2s,activebackground=bgColour2s, highlightthickness=0)
+sageViewButton=Button(tabButtonsFr,text='Summary View',relief='raised', command=displaySageEntries,bg=bgColour2s,activebackground=bgColour2s, highlightthickness=0)
 sageViewButton.grid(column=1,row=0)
 
 
 #___________________ENTRIES TABLE FRAME______________________________
 
-#entries view
-#separate frame with 'Sage' view
-#entries view contains grouped items with raw duration data
-
+""" There are two views:
+- entries view showing each actual entry - this is the ENTRIES TABLE FRAME
+- there is a separate summary view - code below under SORTED AGGREGATED TABLE FRAME
+"""
 
 copyButtons = []
 delButtons = []
@@ -104,25 +114,23 @@ sepLines=[]
 rows = []
 
 def copyEntry(row):
-    #set item text in new entry area
-    #- identify row
-    #- use text directly from row to update items in data entry frame?
-    project.set(sortedListOfEntries.entriesList[row].project)
-    timeItem.set(sortedListOfEntries.entriesList[row].timeEntriesList[0][0])
+    # copies the item text to the new entry fields
+    project.set(overallListOfEntries.entriesList[row].project)
+    timeItem.set(overallListOfEntries.entriesList[row].timeEntriesList[0][0])
     showRelatedTimeItems(None)
-    items=sortedListOfEntries.entriesList[row].timeEntriesList
+    items=overallListOfEntries.entriesList[row].timeEntriesList
     for i in range(0,len(items)): fractions[i].set(items[i][2])
-    details.set(sortedListOfEntries.entriesList[row].details)
-    pass
+    details.set(overallListOfEntries.entriesList[row].details)
+
 def deleteEntry(row):
-    #remove from list and update table
-    del sortedListOfEntries.entriesList[row]
-    updateEntriesTable(sortedListOfEntries.entriesList)
-    sortedListOfEntries.createRawEntriesDF()
-    sortedListOfEntries.createSortedEntriesDF()
-    sortedListOfEntries.saveRawEntriesData()
+    #remove from the item from the list and updates entries table and summary table
+    del overallListOfEntries.entriesList[row]
+    updateEntriesTable(overallListOfEntries.entriesList)
+    overallListOfEntries.createRawEntriesDF()
+    overallListOfEntries.createSortedEntriesDF()
+    overallListOfEntries.saveRawEntriesData()
     updateSortedEntriesTable()
-    pass
+    
 def editEntry(row):
     #on press, change line to Entry items
     #on depress, update list item with Entry text then update table (which would replace Etnry items with Labels)
@@ -145,15 +153,19 @@ def updateEntriesTable(entriesList):
         for productItem in entry.timeEntriesList:
             dur_mins=productItem[3]
             if dur_mins>0:
-                durStr+='{:02.0f}'.format(dur_mins/60)+' : '+'{:02.0f}'.format(dur_mins-dur_mins/60)+'\n'
+                durStr+='{:02.0f}'.format(math.floor(dur_mins/60))+' : '+'{:02.0f}'.format(dur_mins-math.floor(dur_mins/60)*60)+'\n'
                 timeEntryName+=productItem[0]+'\n'
                 timeEntryProduct+=productItem[1]+'\n'        
-        copyButtons.append(Button(entriesTableFr, text='Copy',command=lambda i=i: copyEntry(i),font='TkSmallCaptionFont',bg=bgColour2,bd=0))
+        copyButtons.append(Button(entriesTableFr, text='Copy',command=lambda e = i: copyEntry(e)))
+        delButtons.append(Button(entriesTableFr,  text='Delete',command=lambda e = i: deleteEntry(e)))
+        editButtons.append(Button(entriesTableFr,  text='Edit',command=lambda e = i: editEntry(e)))
         copyButtons[i].grid(column=0,row=i*2+1,padx=1,pady=2)
-        delButtons.append(Button(entriesTableFr,  text='Delete',command=lambda i=i: deleteEntry(i),font='TkSmallCaptionFont',bg=bgColour2,bd=0))
         delButtons[i].grid(column=1,row=i*2+1,padx=1,pady=2)
-        editButtons.append(Button(entriesTableFr,  text='Edit',command=lambda i=i: editEntry(i),font='TkSmallCaptionFont',bg=bgColour2,bd=0))
         editButtons[i].grid(column=2,row=i*2+1,padx=1,pady=2)
+        for button in [copyButtons[i],delButtons[i],editButtons[i]]:
+            button.config(font=('TkSmallCaptionFont 10 bold'),bg=bgColour2,bd=0,activeforeground="white")
+            button.bind("<Enter>", lambda e:e.widget.config(fg="grey",bg=bgActColour3))
+            button.bind("<Leave>", lambda e:e.widget.config(fg="black",bg=bgColour2))     
         rowHeaders=['Date','Time','Duration','Project','Entry Name/Type','Product','Details']
         rowItems=[(entry.entryDate,12),(entry.startTime,5),(durStr.strip('\n'),5),(entry.project,20),(timeEntryName.strip('\n'),20),(timeEntryProduct.strip('\n'),15),(entry.details,30)]
         columns=[]
@@ -180,12 +192,12 @@ def updateSortedEntriesTable():
     [child.destroy() for child in  sortedEntriesTableFr.winfo_children()]
     columnWidths=[10,20,30,15,10,40]
     i=0
-    for entry in sortedListOfEntries.finalSageEntries.iterrows():
+    for entry in overallListOfEntries.finalSageEntries.iterrows():
         entry=entry[1]
         j=0
         for item in entry:
             if i==0:
-                Label(sortedEntriesTableFr,text=sortedListOfEntries.finalSageEntries.columns[j],font='TkHeadingFont',bg=bgColour2s).grid(column=j,row=0)
+                Label(sortedEntriesTableFr,text=overallListOfEntries.finalSageEntries.columns[j],font='TkHeadingFont',bg=bgColour2s).grid(column=j,row=0)
             Label(sortedEntriesTableFr,text=item,width=columnWidths[j],bg=bgColour2s).grid(column=j, row=(i*2)+1,padx=5,pady=2)
             j+=1
         newSeparator=ttk.Separator(sortedEntriesTableFr,orient='horizontal',style='TSeparator')
@@ -201,8 +213,13 @@ def useSelectedFreqProj(event:Event):
     project.set(event.widget['text'])
     listTimeItems(None)
 
-prodFilter:list=['ProdA','ProdB','ProdC','ProdD','NonProd']
-
+#prodFilter:list=['ProdA','ProdB','ProdC','ProdD','NonProd']
+prodFilter=[]
+productsA=[project.get_products() for project in projectsData.get_projects()]
+for prodRow in productsA:
+    for prod in prodRow:
+        prodFilter.append(prod)
+prodFilter=list(set(prodFilter))
 
 def useProductFilter(event:Event):
     global prodFilter
@@ -238,21 +255,21 @@ def updateFreqItems():
     freqProjButtons.grid(column=1,row=0,padx=40,sticky='N')
     freqItemsButtons.grid(column=2,row=0,padx=40,sticky='N')
     freqDetButtons.grid(column=3,row=0,padx=40,sticky='N')
-    recentProjects=sortedListOfEntries.entriesDF['Project'].unique()
-    recentTimeItems=sortedListOfEntries.entriesDF['Item Product'].unique()
-    recentDetails=sortedListOfEntries.entriesDF['Details'].unique()
+    recentProjects=overallListOfEntries.entriesDF['Project'].unique()
+    recentTimeItems=overallListOfEntries.entriesDF['Item Product'].unique()
+    recentDetails=overallListOfEntries.entriesDF['Details'].unique()
     i = 0
     for project in recentProjects:
         if i>3: break
         i+=1
-        recentButton = Button(freqProjButtons,text=project,font='TkSmallCaptionFont',bd=0,bg=bgColour1,highlightbackground=bgColour1,fg=fgColour1)
+        recentButton = Button(freqProjButtons,text=project,font='TkSmallCaptionFont',bd=0,bg=bgActColour3,highlightbackground=bgColour1,fg=fgColour2,borderwidth=1)
         recentButton.pack()
         recentButton.bind('<Button-1>',useSelectedFreqProj)
     i = 0
     j = 0
-    for timeItem in ['ProdA','ProdB','ProdC','ProdD','NonProd']:
+    for prod in prodFilter:
         #if i>3: break
-        recentButton = Button(freqItemsButtons,text=timeItem,font='TkSmallCaptionFont',relief='sunken', bd=1,bg=bgColour1,highlightbackground=fgColour2,fg=fgColour1)
+        recentButton = Button(freqItemsButtons,text=prod,font='TkSmallCaptionFont',relief='sunken', bd=1,bg=bgColour1,highlightbackground=fgColour2,fg=fgColour1)
         recentButton.grid(column=j,row=i+1)
         #recentButton.bind('<ButtonRelease-1>',useProductFilter)
         recentButton.bind('<Button-1>',useProductFilter)
@@ -263,7 +280,7 @@ def updateFreqItems():
         if i>3: break
         i+=1
         if details!='':
-            recentButton = Button(freqDetButtons,text=details,font='TkSmallCaptionFont',bd=0,bg=bgColour1,highlightbackground=bgColour1,fg=fgColour1)
+            recentButton = Button(freqDetButtons,text=details,font='TkSmallCaptionFont',bd=0,bg=bgActColour3,highlightbackground=bgColour1,fg=fgColour2,borderwidth=1)
             recentButton.pack()
             recentButton.bind('<Button-1>',useSelectedFreqDetails)
 
@@ -289,8 +306,7 @@ fractions=[StringVar(),StringVar(),StringVar(),StringVar()]
 
 global selectedProject
 global listOfItems
-overallListOfEntries=[]
-sortedListOfEntries=projectsData.timeEntryDFs()
+overallListOfEntries=projectsData.timeEntryDFs()
 
 def listProjects(event):
     #check the entered text and get required project values
@@ -308,14 +324,17 @@ def listTimeItems(event):
         # listValues=selectedProject.get_itemNames()
         # timeItemEntry.configure(values=listValues)
         # timeItemEntry.event_generate('<Button-1>')
-        listValues=selectedProject.get_namesAndProducts()
+        taskListValues=selectedProject.get_namesAndProducts()
         #if prodFilter==None: listValues=[item[0] for item in listValues]
         #else:
         filteredList=[]
-        for item in listValues:
-            if item[1] in prodFilter: filteredList.append(str(item[0])+' - '+str(item[1]))
-        listValues=filteredList
-        timeItemEntry.configure(values=listValues)
+        for task_product in taskListValues:
+        #    if item[1] in prodFilter : filteredList.append(str(item[0])+' - '+str(item[1]))
+            if task_product[0] not in [x[0] for x in filteredList] : filteredList.append(task_product)
+        taskListValues=[]
+        for task_product in filteredList:
+            if task_product[1]  in prodFilter: taskListValues.append(task_product)
+        timeItemEntry.configure(values=[x[0] for x in taskListValues])
         timeItemEntry.event_generate('<Button-1>')
 
 relatedItems=[]
@@ -346,6 +365,11 @@ def showRelatedTimeItems(event):
         item = Label(timeItemsFr,textvariable=products[x],bg=bgColour3)
         item.grid(column=0,row=x)
         itemFraction = Entry(timeItemsFr,textvariable=fractions[x],width=5)
+        if s<2:
+            fractions[x].set(1)
+            itemFraction.config(state="disabled")
+        else :
+            fractions[x].set(0.5)
         itemFraction.grid(column=1,row=x)
         relatedItems.append(item)
         relatedFractions.append(itemFraction)
@@ -361,7 +385,7 @@ def clearEntry():
 
 def addEntry():
     global overallListOfEntries
-    global sortedListOfEntries
+    global overallListOfEntries
     print('widget status'+str(timeItemsFr.winfo_ismapped()))
     if projectEntry.get()!='' and timeItemEntry.get()!='' and duration.get()!='00 : 00' and timeItemsFr.winfo_ismapped():
         newEntry = projectsData.timeEntryObject(startDate.get(),startTime.get(),duration.get(),project.get(),details.get())
@@ -371,10 +395,8 @@ def addEntry():
             for i in range(0,s):
                 newEntry.add_timeEntriesList(listOfItems[i][0],listOfItems[i][1],fractions[i].get())
             
-            #overallListOfEntries.append(newEntry)
-            sortedListOfEntries.appendEntry(newEntry)
-            updateEntriesTable(sortedListOfEntries.entriesList)
-            #sortedListOfEntries=projectsData.timeEntryDFs(overallListOfEntries)
+            overallListOfEntries.appendEntry(newEntry)
+            updateEntriesTable(overallListOfEntries.entriesList)
             updateSortedEntriesTable()
             updateFreqItems()
             startTime.set(endTime.get()[0:5])
@@ -465,14 +487,16 @@ def updatetime():
 
 main_window.after(0,updatetime)
 
+# LOAD DATA
 def loadDataOnProgramStartUp():
     #this code will update table from saved data when program starts
-    #global overallListOfEntries
-    global sortedListOfEntries
-    sortedListOfEntries=projectsData.timeEntryDFs()
-    dataRead=sortedListOfEntries.readDataFromFile()
+    global overallListOfEntries
+
+    projectsData.readProjectsFromFile()
+    overallListOfEntries=projectsData.timeEntryDFs()
+    dataRead=overallListOfEntries.readDataFromFile()
     if dataRead:
-        updateEntriesTable(sortedListOfEntries.entriesList)
+        updateEntriesTable(overallListOfEntries.entriesList)
         updateSortedEntriesTable()
         updateFreqItems()
 
